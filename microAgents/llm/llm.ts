@@ -43,6 +43,7 @@ export class LLM {
         max_tokens: number;
         temperature: number;
         top_p: number;
+        stream?: boolean;
     };
 
     constructor(
@@ -60,7 +61,8 @@ export class LLM {
             model: model,
             max_tokens: maxTokens,
             temperature: temperature,
-            top_p: topP
+            top_p: topP,
+            stream: false
         };
     }
 
@@ -112,6 +114,7 @@ export class LLM {
         if (topP !== undefined) payload.top_p = topP;
 
         const response: CompletionResponse = await this._request('/completions', payload);
+        // console.log(JSON.stringify(response))
         return response.choices[0].text;
     }
 
@@ -133,6 +136,8 @@ export class LLM {
         if (topP !== undefined) payload.top_p = topP;
 
         const response: ChatCompletionResponse = await this._request('/chat/completions', payload);
+        // console.log(JSON.stringify(response))
+
         return response.choices[0].message.content;
     }
 

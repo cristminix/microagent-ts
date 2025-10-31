@@ -5,9 +5,11 @@ import { MicroAgent, Tool, BaseMessageStore } from './microAgents/core';
 
 // Initialize LLM
 const mathLLM = new LLM(
-    "http://127.0.0.1:4567/v1",
+    // "http://127.0.0.1:4567/v1",
+    "http://127.0.0.1:3003/v1",
     "sk-1234",
-    "qwen-portal,qwen3-coder-plus",
+    // "qwen-portal,qwen3-coder-plus",
+    "gemini-2.5-flash",
     4000,
     0.8,
     0.9

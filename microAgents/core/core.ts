@@ -5,6 +5,7 @@
 import { LLM } from '../llm';
 import { getPostfixSystemPrompt } from '../llm';
 import { BaseMessageStore, Message } from './message_store';
+import { create } from 'xmlbuilder2';
 
 export interface ParameterInfo {
     type: string; // Using string to represent type names since TypeScript doesn't have runtime type info like Python
@@ -83,7 +84,7 @@ export class MicroAgent {
 
         // Add conversation history
         messages.push(...messageStore.getMessages());
-
+        console.log(JSON.stringify(messages, null, 2))
         // Get LLM response
         const response = await this.llm.chat(messages);
 
@@ -95,6 +96,8 @@ export class MicroAgent {
             for (const call of toolCalls) {
                 try {
                     const result = await this.executeTool(call.name, call.params);
+                    // Convert result to string representation to handle objects properly
+
                     results.push(`Tool ${call.name} result: ${result}`);
                 } catch (e) {
                     const error = e as Error;
@@ -144,20 +147,54 @@ export class MicroAgent {
 
         const tool = this.tools[toolName];
 
-        // Execute the tool with the provided parameters
-        // For now, we'll call the function directly with the params object
-        // In a more advanced implementation, you might want to match parameters to function signature
         // Check if the function has parameters defined
         const expectedParamCount = Object.keys(tool.parameters).length;
 
-        // Execute the tool with the provided parameters
-        // If the function expects no parameters, call it without arguments
-        if (expectedParamCount === 0) {
-            return tool.func();
-        } else {
-            // For functions with parameters, call with the params object
-            // For functions that expect named parameters, we might need to destructure
-            return tool.func(params);
+        try {
+            let result;
+            // Execute the tool with the provided parameters
+            // If the function expects no parameters, call it without arguments
+            if (expectedParamCount === 0) {
+                result = await tool.func();
+            } else {
+                // For functions with parameters, we need to determine the correct calling approach
+                // The tool's parameter configuration can help us understand the expected signature
+                // Try calling with individual parameters first (most common for functions like addNumbers(a, b))
+                const paramNames = Object.keys(tool.parameters);
+                const paramValues = paramNames.map(name => params[name]);
+
+                try {
+                    result = await tool.func(...paramValues);
+                } catch (e) {
+                    // If that fails, try the params object approach (for functions that expect an object)
+                    try {
+                        result = await tool.func(params);
+                    } catch (e2) {
+                        // If both approaches fail, throw the original error from the first attempt
+                        throw e;
+                    }
+                }
+            }
+
+            // Ensure the result is properly handled (not returning problematic string representations)
+            if (typeof result === 'object' && result !== null) {
+                // If result is an object with a toString method that might cause issues
+                // return a safe representation
+                if (result.toString && result.toString() === '[object Object]') {
+                    try {
+                        // Try to return a proper JSON representation instead of default [object Object]
+                        return JSON.parse(JSON.stringify(result));
+                    } catch (e) {
+                        // If serialization fails, return a basic representation
+                        return result;
+                    }
+                }
+            }
+
+            return result;
+        } catch (error) {
+            // If there's an error during function execution, throw it
+            throw error;
         }
     }
 
@@ -169,69 +206,87 @@ export class MicroAgent {
         if (matches) {
             for (const match of matches) {
                 // Extract the content between the TOOL_CALLS_NEEDED tags
-                const innerContent = match
+                let innerContent = match
                     .replace(/<TOOL_CALLS_NEEDED>/, "")
-                    .replace(/<\/TOOL_CALLS_NEEDED>/, "");
+                    .replace(/<\/TOOL_CALLS_NEEDED>/, "")
+                    .trim();
 
-                // Parse XML-style tool calls
-                // This is a simplified implementation - a full implementation would require an XML parser
-                const toolMatches = innerContent.match(/<(\w+)>(.*?)<\/\1>/gs);
+                // Clean up the content to handle potential formatting issues
+                // Remove any extra whitespace, newlines, or formatting that might interfere with XML parsing
+                innerContent = innerContent.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
 
-                if (toolMatches) {
-                    for (const toolMatch of toolMatches) {
-                        // Extract tool name
-                        const toolNameMatch = toolMatch.match(/<(\w+)>/);
-                        if (!toolNameMatch) continue;
+                if (innerContent) {
+                    try {
+                        // Parse the XML content using xmlbuilder2
+                        // First wrap the inner content in a root element to make it valid XML
+                        const wrappedContent = `<root>${innerContent}</root>`;
+                        const doc = create(wrappedContent);
 
-                        const toolName = toolNameMatch[1];
-                        if (!(toolName in this.tools)) {
-                            throw new Error(`Unknown tool: ${toolName}`);
-                        }
+                        // Get the root element and traverse its children (which should be tool calls)
+                        const root = doc.root();
+                        if (root) {
+                            // Use the each method to iterate through child elements which represent tool calls
+                            root.each((child, index, level) => {
+                                if (child.node.nodeType === 1) { // Node.ELEMENT_NODE
+                                    const toolName = (child.node as any).localName || (child.node as any).nodeName;
 
-                        const tool = this.tools[toolName];
+                                    // Only process elements that are registered tools
+                                    if (toolName in this.tools) {
+                                        const tool = this.tools[toolName];
 
-                        // Extract parameters
-                        const params: { [key: string]: any } = {};
-                        const paramPattern = /<(\w+)>([^<]*)<\/\1>/g;
-                        let paramMatch;
+                                        // Extract parameters from child elements (the parameters are nested inside the tool element)
+                                        const params: { [key: string]: any } = {};
 
-                        while ((paramMatch = paramPattern.exec(toolMatch)) !== null) {
-                            const paramName = paramMatch[1];
-                            const paramValue = paramMatch[2].trim();
+                                        // Use the each method on the tool element to get its parameters
+                                        child.each((paramElement, paramIndex, paramLevel) => {
+                                            if (paramElement.node.nodeType === 1) { // Node.ELEMENT_NODE
+                                                const paramName = (paramElement.node as any).localName || (paramElement.node as any).nodeName;
+                                                const paramValue = paramElement.node.textContent || ''; // Get the text content of the element
 
-                            // Convert the parameter value to the correct type if type information is available
-                            if (paramName in tool.parameters) {
-                                const paramType = tool.parameters[paramName].type;
+                                                // Convert the parameter value to the correct type if type information is available
+                                                if (paramName in tool.parameters) {
+                                                    const paramType = tool.parameters[paramName].type;
 
-                                try {
-                                    // Basic type conversion based on type name
-                                    switch (paramType) {
-                                        case 'number':
-                                        case 'float':
-                                        case 'int':
-                                            params[paramName] = parseFloat(paramValue);
-                                            break;
-                                        case 'boolean':
-                                            params[paramName] = paramValue.toLowerCase() === 'true';
-                                            break;
-                                        case 'string':
-                                        default:
-                                            params[paramName] = paramValue;
-                                            break;
+                                                    try {
+                                                        // Basic type conversion based on type name
+                                                        switch (paramType) {
+                                                            case 'number':
+                                                            case 'float':
+                                                            case 'int':
+                                                                params[paramName] = parseFloat(paramValue);
+                                                                break;
+                                                            case 'boolean':
+                                                                params[paramName] = paramValue.toLowerCase() === 'true';
+                                                                break;
+                                                            case 'string':
+                                                            default:
+                                                                params[paramName] = paramValue;
+                                                                break;
+                                                        }
+                                                    } catch (e) {
+                                                        throw new Error(`Failed to convert parameter '${paramName}' value '${paramValue}' to type ${paramType}: ${(e as Error).message}`);
+                                                    }
+                                                } else {
+                                                    // If no type information, use the string value
+                                                    params[paramName] = paramValue;
+                                                }
+                                            }
+                                        }, false, false); // self=false, recursive=false for immediate children only
+
+                                        calls.push({
+                                            name: toolName,
+                                            params: params,
+                                        });
+                                    } else {
+                                        // If the element is not a known tool, throw an error
+                                        throw new Error(`Unknown tool: ${toolName}`);
                                     }
-                                } catch (e) {
-                                    throw new Error(`Failed to convert parameter '${paramName}' value '${paramValue}' to type ${paramType}: ${(e as Error).message}`);
                                 }
-                            } else {
-                                // If no type information, use the string value
-                                params[paramName] = paramValue;
-                            }
+                            }, false, false); // self=false, recursive=false for immediate children only
                         }
-
-                        calls.push({
-                            name: toolName,
-                            params: params,
-                        });
+                    } catch (error) {
+                        // If XML parsing fails, throw a descriptive error
+                        throw new Error(`Failed to parse tool calls XML: ${(error as Error).message}`);
                     }
                 }
             }

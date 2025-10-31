@@ -1,6 +1,6 @@
-# microAgents Framework
+# microAgents Framework (TypeScript)
 
-A lightweight LLM orchestration framework for building Multi-Agent AI systems. The framework provides an easy way to create and orchestrate multiple AI agents with XML-style tool calls.
+A lightweight LLM orchestration framework for building Multi-Agent AI systems in TypeScript. The framework provides an easy way to create and orchestrate multiple AI agents with XML-style tool calls.
 
 ## Key Features
 
@@ -8,6 +8,7 @@ A lightweight LLM orchestration framework for building Multi-Agent AI systems. T
 - Works with ANY LLM API that follows OpenAI-compatible format
 - **Unique Feature**: Enables function/tool calling even with models that don't natively support it
 - XML-based tool calling format that's intuitive and human-readable
+- **Type Safety**: Full TypeScript support with proper type definitions
 
 ## Framework Comparison
 
@@ -18,11 +19,7 @@ A lightweight LLM orchestration framework for building Multi-Agent AI systems. T
 | SmolAgent  | Agent           | 8K LOC<br>+198MB | Some integrations<br>(DuckDuckGo, HuggingFace) | Simplified agent design | Limited tool ecosystem<br>Large package size |
 | LangGraph  | Agent, Graph    | 37K LOC<br>+51MB | Some DB integrations<br>(PostgresStore, SqliteSaver) | Graph-based flows<br>DAG support | Complex DAG definitions<br>JSON schema based |
 | AutoGen    | Agent           | 7K LOC<br>+26MB (core) | Optional integrations<br>(OpenAI, Pinecone) | Lightweight core<br>Modular design | Limited built-in tools |
-| microAgents| Agent, Tool     | ~2K LOC<br><1MB | Minimal<br>(requests, urllib3) | ✓ Universal tool calling<br>✓ XML-based format<br>✓ Ultra lightweight<br>✓ Simple integration<br>✓ Any OpenAI-compatible LLM | Bring your own tools<br>No built-in vendors |
-
-
-
-
+| microAgents| Agent, Tool     | ~2K LOC<br><1MB | Minimal<br>(node-fetch) | ✓ Universal tool calling<br>✓ XML-based format<br>✓ Ultra lightweight<br>✓ Simple integration<br>✓ Any OpenAI-compatible LLM<br>✓ TypeScript type safety | Bring your own tools<br>No built-in vendors |
 
 ### Key Differentiators
 
@@ -32,125 +29,160 @@ A lightweight LLM orchestration framework for building Multi-Agent AI systems. T
 - **Minimal Dependencies**: Only core HTTP libraries required
 - **Simple Integration**: Direct function integration without wrapper classes
 - **LLM Agnostic**: Works with any LLM that follows OpenAI's API format, including those without native function calling
+- **Type Safety**: Full TypeScript support with proper type definitions
 
 ## Installation
 
-You can install microAgents directly from PyPI:
-
-```bash
-pip install microAgents
-```
-
-Or install from source for development:
-
-```bash
-git clone https://github.com/prabhjots664/MicroAgents.git
-cd MicroAgents
-pip install -e .
-```
+1. Install dependencies:
+   ```bash
+   pnpm install
+   ```
 
 ## Quick Start
 
-Here's a complete example showing how to create a multi-agent math system:
+Here's a complete example showing how to create a multi-agent math system in TypeScript:
 
-```python
-from microAgents.llm import LLM
-from microAgents.core import MicroAgent, Tool, BaseMessageStore
+```typescript
+import { LLM, MicroAgent, Tool, BaseMessageStore } from './microAgents/core';
 
-# Initialize LLM with your API
-llm = LLM(
-    base_url="https://api.hyperbolic.xyz/v1",
-    api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJrYW1hbHNpbmdoZ2FsbGFAZ21haWwuY29tIiwiaWF0IjoxNzM1MjI2ODIzfQ.1wZmIzTZUWLzr-uP7Qtib_kkXNZmH_yQtSn1lP9S2z0",
-    model="Qwen/Qwen2.5-Coder-32B-Instruct",
-    max_tokens=4000,
-    temperature=0.8,
-    top_p=0.9
-)
+// Initialize LLM with your API
+const llm = new LLM(
+    "https://api.hyperbolic.xyz/v1",
+    "your-api-key-here",
+    "Qwen/Qwen2.5-Coder-32B-Instruct",
+    4000,
+    0.8,
+    0.9
+);
 
-# Define tools for basic math operations
-def add_numbers(a: float, b: float) -> float:
-    return a + b
+// Define tools for basic math operations with proper type information
+const addNumbers = (a: number, b: number): number => {
+    return a + b;
+};
 
-def multiply_numbers(a: float, b: float) -> float:
-    return a * b
+const multiplyNumbers = (a: number, b: number): number => {
+    return a * b;
+};
 
-# Create specialized agents
-math_agent = MicroAgent(
-    llm=llm,
-    prompt="You are a math assistant. Handle basic arithmetic operations.",
-    toolsList=[
-        Tool(description="Add two numbers", func=add_numbers),
-        Tool(description="Multiply two numbers", func=multiply_numbers)
+// Create specialized agent with properly typed tools
+const mathAgent = new MicroAgent(
+    llm,
+    "You are a math assistant. Handle basic arithmetic operations.",
+    [
+        new Tool({
+            description: "Add two numbers",
+            func: addNumbers,
+            parameters: {
+                a: { type: 'number', required: true },
+                b: { type: 'number', required: true }
+            }
+        }),
+        new Tool({
+            description: "Multiply two numbers",
+            func: multiplyNumbers,
+            parameters: {
+                a: { type: 'number', required: true },
+                b: { type: 'number', required: true }
+            }
+        })
     ]
-)
+);
 
-# Create message store for conversation history
-message_store = BaseMessageStore()
+// Create message store for conversation history
+const messageStore = new BaseMessageStore();
 
-# Use the agent
-response = math_agent.execute_agent(
-    "First add 3 and 5, then multiply the result by 2", 
-    message_store
-)
-print(response)
+// Use the agent
+(async () => {
+    const response = await mathAgent.executeAgent(
+        "First add 3 and 5, then multiply the result by 2",
+        messageStore
+    );
+    console.log(response);
+})();
 ```
 
 ## Multi-Agent Orchestration Example
 
-Here's an example of creating multiple specialized agents and orchestrating them:
+Here's an example of creating multiple specialized agents and orchestrating them in TypeScript:
 
-```python
-from microAgents.llm import LLM
-from microAgents.core import MicroAgent, Tool, BaseMessageStore
+```typescript
+import { LLM, MicroAgent, Tool, BaseMessageStore } from './microAgents/core';
 
-# Initialize LLM
-math_llm = LLM(
-    base_url="https://api.hyperbolic.xyz/v1",
-    api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJrYW1hbHNpbmdoZ2FsbGFAZ21haWwuY29tIiwiaWF0IjoxNzM1MjI2ODIzfQ.1wZmIzTZUWLzr-uP7Qtib_kkXNZmH_yQtSn1lP9S2z0",
-    model="Qwen/Qwen2.5-Coder-32B-Instruct",
-    max_tokens=4000,
-    temperature=0.8,
-    top_p=0.9
-)
+// Initialize LLM
+const mathLLM = new LLM(
+    "https://api.hyperbolic.xyz/v1",
+    "your-api-key-here",
+    "Qwen/Qwen2.5-Coder-32B-Instruct",
+    4000,
+    0.8,
+    0.9
+);
 
-# Define tools
-def add_numbers(a: float, b: float) -> float:
-    """Adds two numbers together."""
-    return a + b
+// Define tools with proper type information
+const addNumbers = (a: number, b: number): number => {
+    /** Adds two numbers together. */
+    return a + b;
+};
 
-def multiply_numbers(a: float, b: float) -> float:
-    """Multiplies two numbers together."""
-    return a * b
+const multiplyNumbers = (a: number, b: number): number => {
+    /** Multiplies two numbers together. */
+    return a * b;
+};
 
-def factorial(n: int) -> int:
-    """Calculates factorial of a number."""
-    if n == 0:
-        return 1
-    return n * factorial(n - 1)
+const factorial = (n: number): number => {
+    /** Calculates factorial of a number. */
+    if (n === 0 || n === 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+};
 
-# Create agents
-simple_math_agent = MicroAgent(
-    llm=math_llm,
-    prompt="""You are a simple math assistant. Handle basic arithmetic operations.""",
-    toolsList=[
-        Tool(description="Adds two numbers", func=add_numbers),
-        Tool(description="Multiplies two numbers", func=multiply_numbers)
+// Create agents with properly typed tools
+const simpleMathAgent = new MicroAgent(
+    mathLLM,
+    "You are a simple math assistant. Handle basic arithmetic operations.",
+    [
+        new Tool({
+            description: "Adds two numbers",
+            func: addNumbers,
+            parameters: {
+                a: { type: 'number', required: true },
+                b: { type: 'number', required: true }
+            }
+        }),
+        new Tool({
+            description: "Multiplies two numbers",
+            func: multiplyNumbers,
+            parameters: {
+                a: { type: 'number', required: true },
+                b: { type: 'number', required: true }
+            }
+        })
     ]
-)
+);
 
-advanced_math_agent = MicroAgent(
-    llm=math_llm,
-    prompt="""You are an advanced math assistant. Handle complex math operations.""",
-    toolsList=[
-        Tool(description="Calculates factorial", func=factorial)
+const advancedMathAgent = new MicroAgent(
+    mathLLM,
+    "You are an advanced math assistant. Handle complex math operations.",
+    [
+        new Tool({
+            description: "Calculates factorial",
+            func: factorial,
+            parameters: {
+                n: { type: 'number', required: true }
+            }
+        })
     ]
-)
+);
 
-class Orchestrator(MicroAgent):
-    def __init__(self):
-        super().__init__(
-            llm=math_llm,
-            prompt="""You are a math query analyzer. For each query:
+class Orchestrator extends MicroAgent {
+    simpleMathAgent: MicroAgent;
+    advancedMathAgent: MicroAgent;
+
+    constructor() {
+        super(
+            mathLLM,
+            `You are a math query analyzer. For each query:
 1. If it contains basic arithmetic (addition, subtraction, multiplication, division), output exactly: SIMPLE_MATHS NEEDED
 2. If it contains advanced math (factorials, exponents, logarithms, derivatives, integrals), output exactly: ADVANCED_MATHS NEEDED
 3. If unsure, output exactly: UNKNOWN_MATH_TYPE
@@ -160,56 +192,62 @@ Examples:
 - "Calculate 10 factorial" → ADVANCED_MATHS NEEDED
 - "Solve x^2 + 2x + 1 = 0" → UNKNOWN_MATH_TYPE
 
-Always output exactly one of these three options, nothing else.""",
-            toolsList=[]
-        )
-        self.simple_math_agent = simple_math_agent
-        self.advanced_math_agent = advanced_math_agent
+Always output exactly one of these three options, nothing else.`,
+            []
+        );
+        this.simpleMathAgent = simpleMathAgent;
+        this.advancedMathAgent = advancedMathAgent;
+    }
 
-    def execute_agent(self, query: str, message_store: BaseMessageStore) -> str:
-        """Handle full query flow through orchestrator."""
-        print(f"\nDebug: Orchestrator analyzing query: {query}")
+    async executeAgent(query: string, messageStore: BaseMessageStore): Promise<string> {
+        /** Handle full query flow through orchestrator. */
+        console.log(`\nDebug: Orchestrator analyzing query: ${query}`);
         
-        # Get initial analysis from orchestrator
-        analysis = super().execute_agent(query, message_store)
-        print(f"Debug: Orchestrator analysis result: {analysis}")
+        // Get initial analysis from orchestrator
+        const analysis = await super.executeAgent(query, messageStore);
+        console.log(`Debug: Orchestrator analysis result: ${analysis}`);
         
-        if "SIMPLE_MATHS NEEDED" in analysis:
-            print("Debug: Routing to Simple Math Agent")
-            result = self.simple_math_agent.execute_agent(query, message_store)
-            print(f"Debug: Simple Math Agent result: {result}")
-            return self._format_result("Simple Math Agent", result)
-        elif "ADVANCED_MATHS NEEDED" in analysis:
-            print("Debug: Routing to Advanced Math Agent")
-            result = self.advanced_math_agent.execute_agent(query, message_store)
-            print(f"Debug: Advanced Math Agent result: {result}")
-            return self._format_result("Advanced Math Agent", result)
-        else:
-            return "Orchestrator: Unable to determine the appropriate agent for this query."
+        if (analysis.includes("SIMPLE_MATHS NEEDED")) {
+            console.log("Debug: Routing to Simple Math Agent");
+            const result = await this.simpleMathAgent.executeAgent(query, messageStore);
+            console.log(`Debug: Simple Math Agent result: ${result}`);
+            return this._formatResult("Simple Math Agent", result);
+        } else if (analysis.includes("ADVANCED_MATHS NEEDED")) {
+            console.log("Debug: Routing to Advanced Math Agent");
+            const result = await this.advancedMathAgent.executeAgent(query, messageStore);
+            console.log(`Debug: Advanced Math Agent result: ${result}`);
+            return this._formatResult("Advanced Math Agent", result);
+        } else {
+            return "Orchestrator: Unable to determine the appropriate agent for this query.";
+        }
+    }
 
-    def _format_result(self, agent_name: str, result: str) -> str:
-        """Format the final result from an agent."""
-        return f"Orchestrator: Result from {agent_name}:\n{result}"
+    _formatResult(agentName: string, result: string): string {
+        /** Format the final result from an agent. */
+        return `Orchestrator: Result from ${agentName}:\n${result}`;
+    }
+}
 
-def main():
-    message_store = BaseMessageStore()
-    orchestrator = Orchestrator()
+async function main() {
+    const messageStore = new BaseMessageStore();
+    const orchestrator = new Orchestrator();
     
-    # Example queries that demonstrate XML-style tool calls
-    queries = [
-        "What is 15 plus 27?", 
-        "Calculate 5 factorial",  
-        "Multiply 8 by 9", 
+    // Example queries that demonstrate XML-style tool calls
+    const queries = [
+        "What is 15 plus 27?",
+        "Calculate 5 factorial",
+        "Multiply 8 by 9",
         "First add 3 and 5, then multiply the result by 2"
-    ]
+    ];
     
-    for query in queries:
-        print(f"\nUser: {query}")
-        response = orchestrator.execute_agent(query, message_store)
-        print(f"{response}")
+    for (const query of queries) {
+        console.log(`\nUser: ${query}`);
+        const response = await orchestrator.executeAgent(query, messageStore);
+        console.log(`${response}`);
+    }
+}
 
-if __name__ == "__main__":
-    main()
+main().catch(console.error);
 ```
 
 This example demonstrates:
@@ -217,19 +255,48 @@ This example demonstrates:
 - Building an orchestrator agent to route queries
 - Using a message store to maintain conversation history
 - Coordinating multiple agents to handle different types of tasks
+- Full TypeScript type safety throughout the system
 
-## Examples
+## Demos
 
-- `math_demo.py`: Basic math operations using tool calls
+### Math Demo
+The math demo demonstrates:
+- Simple math operations (addition, multiplication)
+- Advanced math operations (factorial)
+- Agent orchestration to route between simple and advanced agents
+- Tool calling with XML-style syntax
 
+Run with: `tsx math_demo.ts`
 
-## Contributors
+### Chatbot Demo
+The chatbot demo demonstrates:
+- Order management system
+- Customer concern handling
+- Multi-agent orchestration
+- Interactive chat interface
 
-- [prabhjots664](https://github.com/prabhjots664)
-- [shera2018](https://github.com/shera2018)
-- [kamaldeepzsingh](https://github.com/kamaldeepzsingh)
-  
+Run with: `tsx chatbot_demo.ts`
+
+## Project Structure
+
+```
+microAgents/
+├── core/                 # Core agent functionality
+│   ├── core.ts          # Tool and MicroAgent classes
+│   ├── message_store.ts # Message store management
+│   └── index.ts         # Module exports
+└── llm/                 # LLM integration
+    ├── llm.ts           # LLM client
+    ├── prompt.ts        # System prompt generation
+    └── index.ts         # Module exports
+```
+
+## Dependencies
+
+- node-fetch: For HTTP requests to LLM APIs
+- TypeScript: For type safety
+- tsx: For running TypeScript files directly
 
 ## License
 
-MIT License
+MIT

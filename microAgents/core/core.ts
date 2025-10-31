@@ -85,6 +85,7 @@ export class MicroAgent {
         // Add conversation history
         messages.push(...messageStore.getMessages());
         // Get LLM response
+        console.log(messages)
         const response = await this.llm.chat(messages);
 
         // If response contains tool calls, execute them and get results

@@ -12,6 +12,8 @@ export interface LLMConfig {
     maxTokens: number;
     temperature: number;
     topP: number;
+    maxRetries?: number;
+    retryDelayMs?: number;
 }
 
 export interface ChatCompletionResponse {
@@ -45,6 +47,8 @@ export class LLM {
         top_p: number;
         stream?: boolean;
     };
+    maxRetries: number;
+    retryDelayMs: number;
 
     constructor(
         baseUrl: string,
@@ -52,7 +56,9 @@ export class LLM {
         model: string = "gpt-3.5-turbo",
         maxTokens: number = 1000,
         temperature: number = 0.7,
-        topP: number = 1.0
+        topP: number = 1.0,
+        maxRetries: number = 5,
+        retryDelayMs: number = 5000 // 5 seconds
     ) {
         this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
         this.apiKey = apiKey;
@@ -64,6 +70,8 @@ export class LLM {
             top_p: topP,
             stream: false
         };
+        this.maxRetries = maxRetries;
+        this.retryDelayMs = retryDelayMs;
     }
 
     private async _request(endpoint: string, payload: any): Promise<any> {
@@ -78,22 +86,37 @@ export class LLM {
             headers['Authorization'] = `Bearer ${this.apiKey}`;
         }
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify(payload)
-            });
+        let retries = 0;
+        let delay = this.retryDelayMs;
 
-            if (!response.ok) {
-                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        while (retries < this.maxRetries) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error(`API request failed (attempt ${retries + 1}/${this.maxRetries}):`, error);
+                retries++;
+                if (retries < this.maxRetries) {
+                    console.log(`Retrying in ${delay / 1000} seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Exponential backoff
+                } else {
+                    throw new Error(`Max retries exceeded. Last error: ${error}`);
+                }
             }
-
-            return await response.json();
-        } catch (error) {
-            console.error('API request failed:', error);
-            throw error;
         }
+        // This part should ideally not be reached if max retries are handled by throwing an error.
+        // Added for type safety, though the error will be thrown in the catch block.
+        throw new Error("Failed to complete request after multiple retries.");
     }
 
     async completions(

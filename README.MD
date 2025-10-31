@@ -297,6 +297,9 @@ microAgents/
 - TypeScript: For type safety
 - tsx: For running TypeScript files directly
 
+## Credits
+[prabhjots664/MicroAgents](https://github.com/prabhjots664/MicroAgents)
+
 ## License
 
 MIT

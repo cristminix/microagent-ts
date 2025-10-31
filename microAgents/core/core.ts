@@ -84,7 +84,6 @@ export class MicroAgent {
 
         // Add conversation history
         messages.push(...messageStore.getMessages());
-        console.log(JSON.stringify(messages, null, 2))
         // Get LLM response
         const response = await this.llm.chat(messages);
 
@@ -158,20 +157,19 @@ export class MicroAgent {
                 result = await tool.func();
             } else {
                 // For functions with parameters, we need to determine the correct calling approach
-                // The tool's parameter configuration can help us understand the expected signature
                 // Try calling with individual parameters first (most common for functions like addNumbers(a, b))
                 const paramNames = Object.keys(tool.parameters);
                 const paramValues = paramNames.map(name => params[name]);
 
                 try {
                     result = await tool.func(...paramValues);
-                } catch (e) {
+                } catch (firstError) {
                     // If that fails, try the params object approach (for functions that expect an object)
                     try {
                         result = await tool.func(params);
-                    } catch (e2) {
+                    } catch (secondError) {
                         // If both approaches fail, throw the original error from the first attempt
-                        throw e;
+                        throw firstError;
                     }
                 }
             }

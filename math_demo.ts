@@ -5,13 +5,13 @@ import { MicroAgent, Tool, BaseMessageStore } from './microAgents/core';
 
 // Initialize LLM
 const mathLLM = new LLM(
-    // "http://127.0.0.1:4567/v1",
+    "http://127.0.0.1:4567/v1",
     // "http://127.0.0.1:3003/v1",
-    "http://127.0.0.1:3001/v1",
+    // "http://127.0.0.1:3001/v1",
     "sk-1234",
-    // "qwen-portal,qwen3-coder-plus",
+    "qwen-portal,qwen3-coder-plus",
     // "gemini-2.5-flash",
-    "zai/GLM-4.5",
+    // "zai/GLM-4.5",
     // "kimi/kimi-k2",
     4000,
     0.8,
@@ -40,7 +40,26 @@ const factorial = (n: number): number => {
 // Create agents with properly typed tools
 const simpleMathAgent = new MicroAgent(
     mathLLM,
-    "You are a simple math assistant. Handle basic arithmetic operations.",
+    `You are a simple math assistant. Your sole purpose is to perform basic arithmetic operations using the provided tools.
+DO NOT classify the type of math. ONLY respond with tool calls or the final numerical answer.
+
+Example:
+User: First add 3 and 5, then multiply the result by 2
+Assistant: <TOOL_CALLS_NEEDED>
+<addNumbers>
+<a>3</a>
+<b>5</b>
+</addNumbers>
+</TOOL_CALLS_NEEDED>
+Tool addNumbers result: 8
+<TOOL_CALLS_NEEDED>
+<multiplyNumbers>
+<a>8</a>
+<b>2</b>
+</multiplyNumbers>
+</TOOL_CALLS_NEEDED>
+Tool multiplyNumbers result: 16
+16`,
     [
         new Tool({
             description: "Adds two numbers",

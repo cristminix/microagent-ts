@@ -4,7 +4,7 @@
 
 import { LLM } from '../llm';
 import { getPostfixSystemPrompt } from '../llm';
-import { BaseMessageStore, Message } from './message_store';
+import { BaseMessageStore, Message } from './message-store';
 import { create } from 'xmlbuilder2';
 
 export interface ParameterInfo {

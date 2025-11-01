@@ -3,7 +3,7 @@
  */
 
 import fetch from 'node-fetch';
-import { Message } from '../core/message_store';
+import { Message } from '../core/message-store';
 
 export interface LLMConfig {
     baseUrl: string;

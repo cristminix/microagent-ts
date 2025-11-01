@@ -1,5 +1,5 @@
-import { LLM } from './microAgents/llm/llm';
-import { MicroAgent, Tool, BaseMessageStore } from './microAgents/core';
+import { LLM } from './src/microagents/llm/llm';
+import { MicroAgent, Tool, BaseMessageStore } from './src/microagents/core';
 import * as readline from 'readline';
 
 // Initialize LLM

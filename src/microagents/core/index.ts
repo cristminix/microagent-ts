@@ -3,4 +3,4 @@
  */
 
 export { Tool, MicroAgent } from './core';
-export { BaseMessageStore } from './message_store';
+export { BaseMessageStore } from './message-store';

@@ -1,7 +1,7 @@
 /** Simple end-to-end demo with math agents and orchestrator. */
 
-import { LLM } from './microAgents/llm/llm';
-import { MicroAgent, Tool, BaseMessageStore } from './microAgents/core';
+import { LLM } from '../microagents/llm';
+import { MicroAgent, Tool, BaseMessageStore } from '../microagents/core';
 
 // Initialize LLM
 const mathLLM = new LLM(
@@ -149,20 +149,50 @@ Always output exactly one of these three options, nothing else.`,
 
 async function main() {
     const messageStore = new BaseMessageStore();
+    interface Task {
+        query: string;
+        status: 'pending' | 'completed' | 'failed';
+        retries: number;
+        maxRetries: number;
+    }
+
     const orchestrator = new Orchestrator();
 
     // Example queries that demonstrate XML-style tool calls
-    const queries = [
+    const queries: string[] = [
         "What is 15 plus 27?",
         "Calculate 5 factorial",
         "Multiply 8 by 9",
         "First add 3 and 5, then multiply the result by 2"
     ];
 
-    for (const query of queries) {
-        console.log(`\nUser: ${query}`);
-        const response = await orchestrator.executeAgent(query, messageStore);
-        console.log(`${response}`);
+    const tasks: Task[] = queries.map((query: string) => ({
+        query,
+        status: 'pending',
+        retries: 0,
+        maxRetries: 3 // Set a maximum of 3 retries for each task
+    }));
+
+    for (const task of tasks) {
+        console.log(`\nUser: ${task.query}`);
+        let response = "";
+        while (task.status === 'pending' && task.retries < task.maxRetries) {
+            try {
+                response = await orchestrator.executeAgent(task.query, messageStore);
+                // Assuming a successful response means the task is completed
+                task.status = 'completed';
+                console.log(`${response}`);
+            } catch (error) {
+                console.error(`Error executing query "${task.query}": ${error}`);
+                task.retries++;
+                if (task.retries < task.maxRetries) {
+                    console.log(`Retrying "${task.query}" (Attempt ${task.retries}/${task.maxRetries})...`);
+                } else {
+                    task.status = 'failed';
+                    console.log(`Task "${task.query}" failed after ${task.maxRetries} attempts.`);
+                }
+            }
+        }
     }
 }
 

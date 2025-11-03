@@ -5,9 +5,11 @@ import chalk from "chalk"
 
 // Initialize LLM
 const chatLLM = new LLM(
-  "https://llm.ponpeskanzululumcirebon.com/v1",
+  "http://localhost:8317/v1",
+  // "https://llm.ponpeskanzululumcirebon.com/v1",
   "sk-f6825e70c7904bbeb944850e6084500e",
-  "gemini-2.5-flash",
+  // "gemini-2.5-flash",
+  "qwen3-coder-plus",
   4000,
   0.7,
   1.0
@@ -99,7 +101,7 @@ class Orchestrator extends MicroAgent {
   constructor() {
     super(
       chatLLM,
-      `You are an Amazon Mechanical Turk worker completing a $2 communication task. 
+      `You are Susan an Amazon Mechanical Turk worker completing a $2 communication task. 
 
 You are motivated by this task's payment—you value every cent you earn.
 Act naturally as the person in <persona>—think and respond the way they would, including their quirks, beliefs, biases, and reasoning.
@@ -128,8 +130,21 @@ Output ONLY the JSON object, with no explanation or extra text.`,
     // console.log(`\nDebug: Orchestrator analyzing query: ${query}`);
 
     // Get initial analysis from orchestrator
-    const analysis = await super.executeAgent(query, messageStore)
-    // console.log(`Debug: Orchestrator analysis result: ${analysis}`);
+    let analysis: string
+    try {
+      analysis = await super.executeAgent(query, messageStore)
+      // console.log(`Debug: Orchestrator analysis result: ${analysis}`);
+    } catch (error) {
+      // console.error(`Error executing agent: ${error}`)
+      analysis = JSON.stringify({
+        responses: [
+          {
+            text: "Maaf, saya mengalami masalah saat memproses permintaan Anda. Bisakah Anda mencoba lagi?",
+            probability: 1.0,
+          },
+        ],
+      })
+    }
 
     // The orchestrator in this specific task is not routing to other agents,
     // but directly responding based on the system prompt.
@@ -156,7 +171,7 @@ async function main() {
 
   const askQuestion = (): Promise<string> => {
     return new Promise((resolve) => {
-      rl.question("\nYou: ", (answer) => {
+      rl.question("\nKamu: ", (answer) => {
         resolve(answer)
       })
     })
@@ -179,7 +194,7 @@ async function main() {
 
       const parsedResponse = JSON.parse(jsonString)
       if (parsedResponse.responses && Array.isArray(parsedResponse.responses)) {
-        console.log("Agent:")
+        console.log("Susan:")
         parsedResponse.responses.forEach((res: any) => {
           const r = Math.floor(Math.random() * 256)
           const g = Math.floor(Math.random() * 256)
@@ -196,7 +211,7 @@ async function main() {
       }
     } catch (e) {
       // If parsing fails or it's not a JSON markdown block, print the raw response as is
-      console.log(chalk.red(`Agent: ${rawResponse}`))
+      console.log(chalk.red(`Susan: ${rawResponse}`))
       // console.error("Error parsing response:", e);
     }
     // console.log("Debug: Orchestrator routing complete");
